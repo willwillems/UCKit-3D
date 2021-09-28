@@ -1,4 +1,4 @@
-#include <Wire.h>
+  #include <Wire.h>
 
 // MCP23016 I/O Expander
 // Can toggle both ports (16 pins) at rates up to 595Hz (1.68ms)
@@ -45,7 +45,7 @@
 #define IO_gp17           B10000000
 
 
-int interruptPin = 4;
+int interruptPin = 7;
 
 int cue[5] = {0, 0, 0, 0, 0};
 int filter1[4] = {0, 0, 0, 0};
@@ -54,7 +54,6 @@ int filter2[4] = {0, 0, 0, 0};
 void setup(void) {
 
   Serial.begin(9600);  // start serial for output
-  // pinMode(interruptPin, INPUT);
 
   
   Wire.begin();          // join i2c bus (address optional for master)
@@ -84,45 +83,16 @@ void setup(void) {
   delay(500);
 
   // all LED's off
-  write_io(IO_L, IO_gp00, B00000000, B00000111);
-  
-  
-  // attachInterrupt(digitalPinToInterrupt(interruptPin), read_input, FALLING);
-  
+  write_io(IO_L, IO_gp00, B00000000, B00000111);  
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
 void loop(void) {
-
-  // get the button states
-  byte GP0L = read_io(IO_L, GP0);
-  byte GP1L = read_io(IO_L, GP1);
-
-  byte GP0R = read_io(IO_R, GP0);
-  byte GP1R = read_io(IO_R, GP1);
-
-  // toggle the cue's on and off (no debounce)
-  cue[0] = bitRead(GP1L, 3) ? !cue[0]: cue[0]; // CUE_SND_1
-  cue[1] = bitRead(GP1L, 5) ? !cue[1]: cue[1]; // CUE_SND_2
-
-  filter1[0] =  bitRead(GP1L, 0) ? !filter1[1]: filter1[1]; // ON1_SEL
-
-  // off state for left chip 
-  byte out_l_0 = B00000000;
-  byte out_l_1 = B00000111;
-
-  
-  bitWrite(out_l_0, 4, cue[0]); // CUE_DC_1
-  bitWrite(out_l_0, 6, cue[1]); // CUE_DC_2
-
-  // DEMO DOES NOT WORK LIKE IT SHOULD DOES A WIERD TING on purposse
-  bitWrite(out_l_0, 1, filter1[0]);
-  bitWrite(out_l_0, 2, filter1[0]);
-
-  write_io(IO_L, IO_gp00, out_l_0, out_l_1);
-  
-
+  // Poll the interupt pin here using difitalRead and respond to that usign a function
+  if (interruptPin == LOW) { on_interupt(); }
 }
+
+
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
 int read_io(int io_address, int cmd_reg) {
@@ -147,4 +117,54 @@ void write_io(int io_address, int cmd_reg, int push_this, int and_this) {
   delay(1);
 
   delay(50); //70ms
+}
+
+// UNTESTED & DRAFT
+void on_interupt () {
+  // both the chips share one int pin get the button states
+  byte INTCAP0L = read_io(IO_L, INTCAP0);
+  byte INTCAP1L = read_io(IO_L, INTCAP1);
+
+  byte INTCAP0R = read_io(IO_R, INTCAP0);
+  byte INTCAP1R = read_io(IO_R, INTCAP1);
+
+  Serial.println(INTCAP0L);
+  Serial.println(INTCAP1L);
+  Serial.println(INTCAP0R);
+  Serial.println(INTCAP1R);
+
+  write_outputs();
+}
+
+// UNTESTED & UNFINISHED
+void write_outputs () {
+  // off state for left chip 
+  byte out_l_0 = B00000000;
+  byte out_l_1 = B00000111;
+
+  
+  bitWrite(out_l_0, 4, cue[0]); // CUE_DC_1
+  bitWrite(out_l_0, 6, cue[1]); // CUE_DC_2
+
+  // DEMO DOES NOT WORK LIKE IT SHOULD DOES A WIERD TING on purposse ( setting the filer mode with the on)
+  bitWrite(out_l_0, 1, filter1[0]);
+  bitWrite(out_l_0, 2, filter1[0]);
+
+  write_io(IO_L, IO_gp00, out_l_0, out_l_1);
+}
+
+// UNTESTED & UNFINISHED
+void read_inputs () {
+  // get the button states
+  byte GP0L = read_io(IO_L, GP0);
+  byte GP1L = read_io(IO_L, GP1);
+
+  byte GP0R = read_io(IO_R, GP0);
+  byte GP1R = read_io(IO_R, GP1);
+
+  // toggle the cue's on and off (no debounce)
+  cue[0] = bitRead(GP1L, 3) ? !cue[0]: cue[0]; // CUE_SND_1
+  cue[1] = bitRead(GP1L, 5) ? !cue[1]: cue[1]; // CUE_SND_2
+
+  filter1[0] =  bitRead(GP1L, 0) ? !filter1[1]: filter1[1]; // ON1_SEL
 }
