@@ -94,6 +94,11 @@
 
 int interruptPin = 7;
 
+byte L0 = B00000111;
+byte L1 = B00000000;
+byte R0 = B00000000;
+byte R1 = B00000000;
+
 int cue[5] = {0, 0, 0, 0, 0};
 int filter1[4] = {0, 0, 0, 0};
 int filter2[4] = {0, 0, 0, 0};
@@ -179,7 +184,6 @@ void write_io(int io_address, int cmd_reg, int push_this, int and_this) {
   // delay(50); //70ms
 }
 
-// UNTESTED & DRAFT
 void on_interupt () {
   // both the chips share one int pin get the button states
   byte INTCAP0L = read_io(IO_L, INTCAP0);
@@ -201,7 +205,7 @@ void on_interupt () {
 
   write_outputs();
 
-  delay(10); // POOR MANS DEBVOUNCE
+  // delay(10); // POOR MANS DEBVOUNCE
 }
 
 
@@ -247,24 +251,30 @@ void read_inputs () {
   proccess_inputs(GP0L, GP1L, GP0R, GP1R);
 }
 
-//bool bitComp(byte b0, byte b1, int i) {
-//  return bitRead(b0, i) == bitRead(b1, i)
-//}
+bool bitComp(byte b0, byte b1, int i) {
+  return bitRead(b0, i) != bitRead(b1, i);
+}
 
 
 void proccess_inputs (byte GP0L, byte GP1L, byte GP0R, byte GP1R) {
 
   // toggle the cue's on and off (no debounce)
-  cue[0] = bitRead(GP1L, L1_I_CUE_SND_1) ? !cue[0]: cue[0]; // CUE_SND_1
-  cue[1] = bitRead(GP1L, L1_I_CUE_SND_2) ? !cue[1]: cue[1]; // CUE_SND_2
-  cue[2] = bitRead(GP1R, R1_I_CUE_SND_3) ? !cue[2]: cue[2]; // CUE_SND_1
-  cue[3] = bitRead(GP1R, R1_I_CUE_SND_4) ? !cue[3]: cue[3]; // CUE_SND_2
+  cue[0] = bitComp(L1, GP1L, L1_I_CUE_SND_1) ? !cue[0]: cue[0]; // CUE_SND_1
+  cue[1] = bitComp(L1, GP1L, L1_I_CUE_SND_2) ? !cue[1]: cue[1]; // CUE_SND_2
+  cue[2] = bitComp(R1, GP1R, R1_I_CUE_SND_3) ? !cue[2]: cue[2]; // CUE_SND_1
+  cue[3] = bitComp(R1, GP1R, R1_I_CUE_SND_4) ? !cue[3]: cue[3]; // CUE_SND_2
 
   cue[4] = cue[0] || cue[1] || cue[2] || cue[3];
 
 
   // these two filters currently follow a janky toggle no select flow
-  filter1[0] =  bitRead(GP1L, L1_I_ON1_SEL) ? !filter1[0]: filter1[0]; // ON1_SEL
+  filter1[0] =  bitComp(L1, GP1L, L1_I_ON1_SEL) ? !filter1[0]: filter1[0]; // ON1_SEL
   
-  filter2[0] =  bitRead(GP0R, R0_I_ON2_SEL) ? !filter2[0]: filter2[0]; // ON1_SEL
+  filter2[0] =  bitComp(R0, GP0R, R0_I_ON2_SEL) ? !filter2[0]: filter2[0]; // ON1_SEL
+
+  // update state
+  L0 = GP0L;
+  L1 = GP1L;
+  R0 = GP0R;
+  R1 = GP1R;
 }
